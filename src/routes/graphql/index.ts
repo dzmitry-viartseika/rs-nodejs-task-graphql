@@ -1,13 +1,13 @@
 import { FastifyPluginAsyncTypebox } from '@fastify/type-provider-typebox';
-import { createGqlResponseSchema, gqlResponseSchema } from './schemas.js';
-import { graphql, validate, parse } from 'graphql';
-import { RootSchema } from './graphqlSchema.js';
+import { graphql, GraphQLError, parse, validate } from 'graphql';
 import depthLimit from 'graphql-depth-limit';
-import { PrismaClient } from '@prisma/client';
 
-export let prisma: PrismaClient = new PrismaClient();
+import { createGqlResponseSchema, gqlResponseSchema, gqlSchema } from './schemas.js';
+import { createDataloader } from './loader.js';
 
 const plugin: FastifyPluginAsyncTypebox = async (fastify) => {
+  const { prisma: prismaClient } = fastify;
+
   fastify.route({
     url: '/',
     method: 'POST',
@@ -18,23 +18,31 @@ const plugin: FastifyPluginAsyncTypebox = async (fastify) => {
       },
     },
     async handler(req) {
-      const validationResult = validate(RootSchema, parse(req.body.query), [
-        depthLimit(5),
-      ]);
+      /** Validate  depthLimit*/
+      {
+        const errors: readonly GraphQLError[] = validate(
+          gqlSchema,
+          parse(req.body.query),
+          [depthLimit(5)],
+        );
 
-      if (validationResult.length) {
-        return { errors: validationResult };
+        if (errors.length > 0) {
+          return { data: '', errors };
+        }
       }
-      prisma = fastify.prisma;
 
-      const result = await graphql({
-        schema: RootSchema,
+      /** Create response */
+      const { data, errors } = await graphql({
+        schema: gqlSchema,
         source: req.body.query,
         variableValues: req.body.variables,
-        contextValue: { prisma: fastify.prisma },
+        contextValue: {
+          db: prismaClient,
+          loaders: createDataloader(prismaClient),
+        },
       });
 
-      return result;
+      return { data, errors };
     },
   });
 };
