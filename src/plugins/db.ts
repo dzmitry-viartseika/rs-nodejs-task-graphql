@@ -49,8 +49,8 @@ function handlePrismaError(error: unknown) {
     info.code = 400;
   }
   if (
-      error instanceof PrismaClientUnknownRequestError ||
-      error instanceof PrismaClientRustPanicError
+    error instanceof PrismaClientUnknownRequestError ||
+    error instanceof PrismaClientRustPanicError
   ) {
     info.mes = error.message;
     info.code = 502;

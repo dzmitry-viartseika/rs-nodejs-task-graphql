@@ -1,0 +1,11 @@
+import fp from 'fastify-plugin';
+import { fastifyEnv } from '@fastify/env';
+import { Type } from '@fastify/type-provider-typebox';
+const schema = Type.Object({
+    FASTIFY_PORT: Type.Integer(),
+});
+export default fp(async (fastify) => fastify.register(fastifyEnv, {
+    dotenv: true,
+    schema,
+}));
+//# sourceMappingURL=env.js.map
